@@ -85,7 +85,8 @@ const UserProfileView: React.FC<{ userId: string; onBack: () => void }> = ({ use
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <StatCard title="Workouts This Month" value={workoutsThisMonth.toString()} />
-          <StatCard title="Total Workout Time (hrs)" value={totalWorkoutTime} />
+          {/* FIX: Convert totalWorkoutTime to string to match StatCard prop type */}
+          <StatCard title="Total Workout Time (hrs)" value={totalWorkoutTime.toString()} />
           <StatCard title="Member Since" value={new Date(user.joinDate).toLocaleDateString()} />
       </div>
 

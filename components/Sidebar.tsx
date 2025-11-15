@@ -1,14 +1,14 @@
-
 import React from 'react';
 import type { View } from '../types';
-import { DashboardIcon, UsersIcon, SubscriptionsIcon, ContentIcon, MeetingsIcon } from './Icons';
+import { DashboardIcon, UsersIcon, SubscriptionsIcon, ContentIcon, MeetingsIcon, LogoutIcon } from './Icons';
 
 interface SidebarProps {
   currentView: View;
   setCurrentView: (view: View) => void;
+  onLogout: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, onLogout }) => {
   const navItems: { name: View; icon: React.ReactNode }[] = [
     { name: 'Dashboard', icon: <DashboardIcon /> },
     { name: 'Users', icon: <UsersIcon /> },
@@ -42,8 +42,18 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
           </a>
         ))}
       </nav>
-      <div className="p-4 border-t border-gray-700">
-        <p className="text-xs text-center text-gray-500">&copy; 2024 Gym Inc. All rights reserved.</p>
+      <div className="px-4 py-6 border-t border-gray-700">
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              onLogout();
+            }}
+            className="flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-gray-700 hover:text-white"
+          >
+            <LogoutIcon />
+            <span className="font-medium">Logout</span>
+          </a>
       </div>
     </aside>
   );

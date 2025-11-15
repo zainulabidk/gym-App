@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import StatCard from './StatCard';
 import { getUsers, getPlans, getMeetings, getContent } from '../services/mockApi';
-import type { User, SubscriptionPlan, FitnessContent, ZoomMeeting } from '../types';
+import type { User, SubscriptionPlan, FitnessContent, ZoomMeeting, View } from '../types';
 import { SubscriptionStatus } from '../types';
 import { UserPlusIcon, CreditCardIcon, VideoCameraIcon, ClockIcon, ArrowRightIcon } from './Icons';
 
@@ -11,7 +11,11 @@ type Activity = {
   data: User | FitnessContent | { name: string; plan: string };
 };
 
-const DashboardView: React.FC = () => {
+interface DashboardViewProps {
+  setCurrentView: (view: View) => void;
+}
+
+const DashboardView: React.FC<DashboardViewProps> = ({ setCurrentView }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [meetings, setMeetings] = useState<ZoomMeeting[]>([]);
@@ -147,8 +151,10 @@ const DashboardView: React.FC = () => {
                   </li>
               )) : <p className="text-sm text-gray-500">No upcoming meetings.</p>}
             </ul>
-             {upcomingMeetings.length > 0 && (
-                 <button className="mt-6 w-full text-sm font-semibold text-primary hover:text-indigo-700 flex items-center justify-center gap-2">
+             {meetings.length > 0 && (
+                 <button 
+                    onClick={() => setCurrentView('Meetings')}
+                    className="mt-6 w-full text-sm font-semibold text-primary hover:text-indigo-700 flex items-center justify-center gap-2">
                     <span>View all meetings</span>
                     <ArrowRightIcon />
                 </button>

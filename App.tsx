@@ -6,9 +6,11 @@ import SubscriptionsView from './components/SubscriptionsView';
 import ContentView from './components/ContentView';
 import MeetingsView from './components/MeetingsView';
 import UserProfileView from './components/UserProfileView';
+import LoginView from './components/LoginView';
 import type { View } from './types';
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<View>('Dashboard');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
@@ -19,11 +21,20 @@ const App: React.FC = () => {
   const handleBackToUsers = () => {
     setSelectedUserId(null);
   };
+  
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+  };
+  
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentView('Dashboard'); // Reset to default view on logout
+  };
 
   const renderView = () => {
     switch (currentView) {
       case 'Dashboard':
-        return <DashboardView />;
+        return <DashboardView setCurrentView={setCurrentView} />;
       case 'Users':
         return selectedUserId ? (
           <UserProfileView userId={selectedUserId} onBack={handleBackToUsers} />
@@ -37,7 +48,7 @@ const App: React.FC = () => {
       case 'Meetings':
         return <MeetingsView />;
       default:
-        return <DashboardView />;
+        return <DashboardView setCurrentView={setCurrentView} />;
     }
   };
   
@@ -46,9 +57,13 @@ const App: React.FC = () => {
     setCurrentView(view);
   };
 
+  if (!isAuthenticated) {
+    return <LoginView onLogin={handleLogin} />;
+  }
+
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
-      <Sidebar currentView={currentView} setCurrentView={handleSetCurrentView} />
+      <Sidebar currentView={currentView} setCurrentView={handleSetCurrentView} onLogout={handleLogout} />
       <main className="flex-1 overflow-y-auto p-6 lg:p-10">
         {renderView()}
       </main>
