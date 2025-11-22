@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { EmailIcon, LockIcon, EyeIcon, EyeSlashIcon } from './Icons';
 
@@ -6,8 +7,8 @@ interface LoginViewProps {
 }
 
 const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@gym.com');
+  const [password, setPassword] = useState('password');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
