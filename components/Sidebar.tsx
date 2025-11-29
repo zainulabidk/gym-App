@@ -1,6 +1,7 @@
+
 import React from 'react';
 import type { View } from '../types';
-import { DashboardIcon, UsersIcon, SubscriptionsIcon, ContentIcon, MeetingsIcon, LogoutIcon } from './Icons';
+import { DashboardIcon, UsersIcon, SubscriptionsIcon, ContentIcon, MeetingsIcon, LogoutIcon, CurrencyDollarIcon } from './Icons';
 
 interface SidebarProps {
   currentView: View;
@@ -15,6 +16,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, onLogout
     { name: 'Subscriptions', icon: <SubscriptionsIcon /> },
     { name: 'Content', icon: <ContentIcon /> },
     { name: 'Meetings', icon: <MeetingsIcon /> },
+    { name: 'Payments', icon: <CurrencyDollarIcon /> },
   ];
 
   return (

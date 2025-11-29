@@ -1,4 +1,5 @@
-export type View = 'Dashboard' | 'Users' | 'Subscriptions' | 'Content' | 'Meetings';
+
+export type View = 'Dashboard' | 'Users' | 'Subscriptions' | 'Content' | 'Meetings' | 'Payments';
 
 export enum SubscriptionStatus {
     Active = 'Active',
@@ -59,4 +60,24 @@ export interface ZoomMeeting {
   duration: number; // in minutes
   host: string;
   meetingUrl: string;
+}
+
+export enum PaymentStatus {
+    Pending = 'Pending',
+    Approved = 'Approved',
+    Rejected = 'Rejected'
+}
+
+export interface PaymentRequest {
+    id: string;
+    userId: string;
+    userName: string; // Denormalized for display convenience
+    userEmail: string;
+    amount: number;
+    currency: string;
+    screenshotUrl: string;
+    date: string;
+    status: PaymentStatus;
+    planName: string;
+    notes?: string;
 }

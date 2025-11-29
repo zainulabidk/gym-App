@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
@@ -7,6 +8,7 @@ import ContentView from './components/ContentView';
 import MeetingsView from './components/MeetingsView';
 import UserProfileView from './components/UserProfileView';
 import LoginView from './components/LoginView';
+import PaymentsView from './components/PaymentsView';
 import type { View } from './types';
 
 const App: React.FC = () => {
@@ -47,6 +49,8 @@ const App: React.FC = () => {
         return <ContentView />;
       case 'Meetings':
         return <MeetingsView />;
+      case 'Payments':
+        return <PaymentsView />;
       default:
         return <DashboardView setCurrentView={setCurrentView} />;
     }

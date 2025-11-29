@@ -1,5 +1,6 @@
-import type { User, SubscriptionPlan, FitnessContent, ZoomMeeting, UserProgress } from '../types';
-import { SubscriptionStatus, ContentType } from '../types';
+
+import type { User, SubscriptionPlan, FitnessContent, ZoomMeeting, UserProgress, PaymentRequest } from '../types';
+import { SubscriptionStatus, ContentType, PaymentStatus } from '../types';
 
 const user1Progress: UserProgress = {
     workoutLogs: [
@@ -41,6 +42,47 @@ let meetings: ZoomMeeting[] = [
   { id: '1', topic: 'HIIT Live Session', startTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), duration: 45, host: 'Coach Sarah', meetingUrl: '#' },
   { id: '2', topic: 'Advanced Yoga Workshop', startTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), duration: 90, host: 'Coach David', meetingUrl: '#' },
   { id: '3', topic: 'Nutrition Q&A', startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), duration: 60, host: 'Dr. Evans', meetingUrl: '#' },
+];
+
+let paymentRequests: PaymentRequest[] = [
+    { 
+        id: 'pay1', 
+        userId: '3', 
+        userName: 'Mike Johnson', 
+        userEmail: 'mike.j@example.com',
+        amount: 49.99, 
+        currency: 'USD', 
+        screenshotUrl: 'https://picsum.photos/seed/pay1/300/600', 
+        date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), 
+        status: PaymentStatus.Pending, 
+        planName: 'Premium',
+        notes: 'Transaction ID: TXN12345'
+    },
+    { 
+        id: 'pay2', 
+        userId: '2', 
+        userName: 'Jane Smith', 
+        userEmail: 'jane.smith@example.com',
+        amount: 19.99, 
+        currency: 'USD', 
+        screenshotUrl: 'https://picsum.photos/seed/pay2/300/600', 
+        date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), 
+        status: PaymentStatus.Approved, 
+        planName: 'Basic'
+    },
+    { 
+        id: 'pay3', 
+        userId: '1', 
+        userName: 'John Doe', 
+        userEmail: 'john.doe@example.com',
+        amount: 499.99, 
+        currency: 'USD', 
+        screenshotUrl: 'https://picsum.photos/seed/pay3/300/600', 
+        date: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), 
+        status: PaymentStatus.Rejected, 
+        planName: 'Premium Yearly',
+        notes: 'Screenshot blurry, please re-upload'
+    },
 ];
 
 const simulateDelay = <T,>(data: T): Promise<T> => new Promise(res => setTimeout(() => res(data), 500));
@@ -103,4 +145,28 @@ export const addMeeting = (meeting: Omit<ZoomMeeting, 'id' | 'meetingUrl'>) => {
 export const deleteMeeting = (meetingId: string) => {
   meetings = meetings.filter(m => m.id !== meetingId);
   return simulateDelay({ success: true });
+};
+
+// Payment API
+export const getPaymentRequests = () => simulateDelay([...paymentRequests]);
+export const updatePaymentStatus = (paymentId: string, status: PaymentStatus, notes?: string) => {
+    paymentRequests = paymentRequests.map(p => {
+        if (p.id === paymentId) {
+            return { ...p, status, ...(notes ? { notes } : {}) };
+        }
+        return p;
+    });
+    // Also simulate updating user subscription status if approved
+    if (status === PaymentStatus.Approved) {
+        const payment = paymentRequests.find(p => p.id === paymentId);
+        if (payment) {
+            const user = users.find(u => u.id === payment.userId);
+            if (user) {
+                user.subscriptionStatus = SubscriptionStatus.Active;
+                user.subscriptionPlan = payment.planName;
+            }
+        }
+    }
+    const updatedPayment = paymentRequests.find(p => p.id === paymentId);
+    return simulateDelay(updatedPayment);
 };
