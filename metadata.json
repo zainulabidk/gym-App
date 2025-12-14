@@ -1,5 +1,5 @@
 {
-  "name": "Gym Admin Dashboard",
-  "description": "An admin panel for managing users, subscriptions, fitness content, and Zoom meetings for a gym application. It provides a comprehensive interface for administrators to oversee all aspects of the app.",
+  "name": "Q7 Fitness Admin",
+  "description": "An admin panel for managing users, subscriptions, fitness content, and Zoom meetings for Q7 Fitness. It provides a comprehensive interface for administrators to oversee all aspects of the app.",
   "requestFramePermissions": []
 }

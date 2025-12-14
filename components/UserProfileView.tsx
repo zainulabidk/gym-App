@@ -1,23 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { User } from '../types';
 import { SubscriptionStatus } from '../types';
-import { getUser } from '../services/mockApi';
+import { getUser } from '../services/api';
 import { ChevronLeftIcon, DumbbellIcon } from './Icons';
 import StatCard from './StatCard';
 
 const UserProfileView: React.FC<{ userId: string; onBack: () => void }> = ({ userId, onBack }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      setLoading(true);
-      const userData = await getUser(userId);
-      setUser(userData);
-      setLoading(false);
-    };
-    fetchUser();
-  }, [userId]);
+  const { data: user, isLoading } = useQuery({ 
+      queryKey: ['user', userId], 
+      queryFn: () => getUser(userId) 
+  });
 
   const getStatusBadge = (status: SubscriptionStatus) => {
     switch (status) {
@@ -41,7 +34,7 @@ const UserProfileView: React.FC<{ userId: string; onBack: () => void }> = ({ use
     return (totalMinutes / 60).toFixed(1); // Return hours
   }, [user]);
 
-  if (loading) {
+  if (isLoading) {
     return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
   }
 

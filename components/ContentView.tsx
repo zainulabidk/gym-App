@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { FitnessContent } from '../types';
 import { ContentType } from '../types';
-import { getContent, addContent, deleteContent } from '../services/mockApi';
+import { getContent, addContent, deleteContent } from '../services/api';
 import Modal from './Modal';
+import Pagination from './Pagination';
 import { PlusIcon, DeleteIcon } from './Icons';
 
 const ContentForm: React.FC<{ onSave: (content: any) => void; onCancel: () => void }> = ({ onSave, onCancel }) => {
@@ -20,7 +22,6 @@ const ContentForm: React.FC<{ onSave: (content: any) => void; onCancel: () => vo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, file upload would be handled here.
     onSave(formData);
   };
 
@@ -57,37 +58,46 @@ const ContentForm: React.FC<{ onSave: (content: any) => void; onCancel: () => vo
 
 
 const ContentView: React.FC = () => {
-  const [content, setContent] = useState<FitnessContent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
-  const fetchContent = useCallback(async () => {
-    setLoading(true);
-    const contentData = await getContent();
-    setContent(contentData);
-    setLoading(false);
-  }, []);
+  const { data: content = [], isLoading } = useQuery({ queryKey: ['content'], queryFn: getContent });
 
-  useEffect(() => {
-    fetchContent();
-  }, [fetchContent]);
+  const addContentMutation = useMutation({
+    mutationFn: addContent,
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['content'] });
+        setIsModalOpen(false);
+    }
+  });
+
+  const deleteContentMutation = useMutation({
+    mutationFn: deleteContent,
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['content'] });
+    }
+  });
 
   const handleSaveContent = async (item: Omit<FitnessContent, 'id'>) => {
-    await addContent(item);
-    fetchContent();
-    setIsModalOpen(false);
+    addContentMutation.mutate(item);
   };
   
   const handleDeleteContent = async (contentId: string) => {
       if(window.confirm('Are you sure you want to delete this content?')) {
-          await deleteContent(contentId);
-          fetchContent();
+          deleteContentMutation.mutate(contentId);
       }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
   }
+
+  const totalPages = Math.ceil(content.length / itemsPerPage);
+  const paginatedContent = content.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div>
@@ -99,8 +109,8 @@ const ContentView: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {content.map((item) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
+        {paginatedContent.map((item) => (
           <div key={item.id} className="group relative bg-white rounded-lg shadow-md overflow-hidden">
             <img src={item.thumbnailUrl} alt={item.title} className="w-full h-48 object-cover" />
             <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
@@ -123,6 +133,14 @@ const ContentView: React.FC = () => {
             </button>
           </div>
         ))}
+      </div>
+      
+      <div className="bg-white rounded-lg shadow-sm">
+        <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+        />
       </div>
       
       {isModalOpen && (

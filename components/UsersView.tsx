@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { User } from '../types';
 import { SubscriptionStatus } from '../types';
-import { getUsers, addUser, updateUser, deleteUser } from '../services/mockApi';
+import { getUsers, addUser, updateUser, deleteUser } from '../services/api';
 import Modal from './Modal';
+import Pagination from './Pagination';
 import { PlusIcon, EditIcon, DeleteIcon } from './Icons';
 
 const UserForm: React.FC<{ user: Partial<User> | null; onSave: (user: any) => void; onCancel: () => void }> = ({ user, onSave, onCancel }) => {
@@ -68,21 +70,40 @@ const UserForm: React.FC<{ user: Partial<User> | null; onSave: (user: any) => vo
 
 
 const UsersView: React.FC<{ onSelectUser: (userId: string) => void }> = ({ onSelectUser }) => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    const usersData = await getUsers();
-    setUsers(usersData);
-    setLoading(false);
-  }, []);
+  // React Query for fetching
+  const { data: users = [], isLoading } = useQuery({ queryKey: ['users'], queryFn: getUsers });
 
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+  // Mutations
+  const addUserMutation = useMutation({
+    mutationFn: addUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      handleCloseModal();
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: updateUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      handleCloseModal();
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: deleteUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
 
   const handleOpenModal = (user: User | null = null) => {
     setEditingUser(user);
@@ -96,18 +117,15 @@ const UsersView: React.FC<{ onSelectUser: (userId: string) => void }> = ({ onSel
 
   const handleSaveUser = async (user: User) => {
     if (editingUser) {
-      await updateUser({ ...editingUser, ...user });
+      updateUserMutation.mutate({ ...editingUser, ...user });
     } else {
-      await addUser(user);
+      addUserMutation.mutate(user);
     }
-    fetchUsers();
-    handleCloseModal();
   };
 
   const handleDeleteUser = async (userId: string) => {
     if(window.confirm('Are you sure you want to delete this user?')) {
-        await deleteUser(userId);
-        fetchUsers();
+        deleteUserMutation.mutate(userId);
     }
   };
 
@@ -120,9 +138,12 @@ const UsersView: React.FC<{ onSelectUser: (userId: string) => void }> = ({ onSel
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
   }
+
+  const totalPages = Math.ceil(users.length / itemsPerPage);
+  const paginatedUsers = users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div>
@@ -134,7 +155,7 @@ const UsersView: React.FC<{ onSelectUser: (userId: string) => void }> = ({ onSel
         </button>
       </div>
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+      <div className="bg-white shadow-md rounded-lg flex flex-col">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -148,12 +169,12 @@ const UsersView: React.FC<{ onSelectUser: (userId: string) => void }> = ({ onSel
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
+              {paginatedUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => onSelectUser(user.id)}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                        <img className="h-10 w-10 rounded-full" src={user.avatarUrl} alt="" />
+                        <img className="h-10 w-10 rounded-full" src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.name}`} alt="" />
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{user.name}</div>
@@ -182,6 +203,11 @@ const UsersView: React.FC<{ onSelectUser: (userId: string) => void }> = ({ onSel
             </tbody>
           </table>
         </div>
+        <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+        />
       </div>
       
       {isModalOpen && (

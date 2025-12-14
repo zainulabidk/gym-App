@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import StatCard from './StatCard';
-import { getUsers, getPlans, getMeetings, getContent } from '../services/mockApi';
-import type { User, SubscriptionPlan, FitnessContent, ZoomMeeting, View } from '../types';
+import { getUsers, getPlans, getMeetings, getContent } from '../services/api';
+import type { User, FitnessContent, View } from '../types';
 import { SubscriptionStatus } from '../types';
 import { UserPlusIcon, CreditCardIcon, VideoCameraIcon, ClockIcon, ArrowRightIcon } from './Icons';
 
@@ -16,32 +17,17 @@ interface DashboardViewProps {
 }
 
 const DashboardView: React.FC<DashboardViewProps> = ({ setCurrentView }) => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [meetings, setMeetings] = useState<ZoomMeeting[]>([]);
-  const [content, setContent] = useState<FitnessContent[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Parallel fetching with useQuery
+  const { data: users = [], isLoading: isLoadingUsers } = useQuery({ queryKey: ['users'], queryFn: getUsers });
+  const { data: plans = [], isLoading: isLoadingPlans } = useQuery({ queryKey: ['plans'], queryFn: getPlans });
+  const { data: meetings = [], isLoading: isLoadingMeetings } = useQuery({ queryKey: ['meetings'], queryFn: getMeetings });
+  const { data: content = [], isLoading: isLoadingContent } = useQuery({ queryKey: ['content'], queryFn: getContent });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const [usersData, plansData, meetingsData, contentData] = await Promise.all([
-        getUsers(),
-        getPlans(),
-        getMeetings(),
-        getContent(),
-      ]);
-      setUsers(usersData);
-      setPlans(plansData);
-      setMeetings(meetingsData);
-      setContent(contentData);
-      setLoading(false);
-    };
-    fetchData();
-  }, []);
+  const loading = isLoadingUsers || isLoadingPlans || isLoadingMeetings || isLoadingContent;
 
   const totalUsers = users.length;
   const activeSubscriptions = users.filter(u => u.subscriptionStatus === SubscriptionStatus.Active).length;
+  
   const monthlyRevenue = useMemo(() => {
     return users.reduce((acc, user) => {
         if (user.subscriptionStatus === SubscriptionStatus.Active) {
@@ -57,7 +43,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setCurrentView }) => {
   const recentActivity = useMemo((): Activity[] => {
     const userActivities: Activity[] = users.map(u => ({ type: 'new_user', data: u, date: new Date(u.joinDate) }));
     const contentActivities: Activity[] = content.map(c => ({ type: 'new_content', data: c, date: new Date(c.uploadDate) }));
-    // Add a synthetic upgrade activity for demonstration
+    // Add a synthetic upgrade activity for demonstration (would normally come from API)
     const upgradeActivity: Activity[] = users[0] ? [{ type: 'upgraded_plan', data: { name: users[0].name, plan: 'Premium' }, date: new Date(Date.now() - 24 * 60 * 60 * 1000)}] : [];
     
     return [...userActivities, ...contentActivities, ...upgradeActivity]
@@ -72,7 +58,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setCurrentView }) => {
         .slice(0, 3);
   }, [meetings]);
 
-  // FIX: Moved `timeSince` function to be in the component scope.
   const timeSince = (date: Date) => {
       const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
       let interval = seconds / 31536000;

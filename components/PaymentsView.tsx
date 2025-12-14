@@ -1,42 +1,67 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PaymentRequest } from '../types';
 import { PaymentStatus } from '../types';
-import { getPaymentRequests, updatePaymentStatus } from '../services/mockApi';
+import { getPaymentRequests, updatePaymentStatus } from '../services/api';
 import Modal from './Modal';
+import Pagination from './Pagination';
 import { CheckIcon, XMarkIcon, EyeIcon } from './Icons';
 
 const PaymentsView: React.FC = () => {
-  const [payments, setPayments] = useState<PaymentRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [selectedPayment, setSelectedPayment] = useState<PaymentRequest | null>(null);
 
-  const fetchPayments = useCallback(async () => {
-    setLoading(true);
-    const data = await getPaymentRequests();
-    // Sort by pending first, then date
-    const sortedData = data.sort((a, b) => {
+  // Rejection Modal State
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [paymentToRejectId, setPaymentToRejectId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const { data: payments = [], isLoading } = useQuery({
+    queryKey: ['payments'],
+    queryFn: getPaymentRequests,
+    select: (data) => data.sort((a, b) => {
         if (a.status === PaymentStatus.Pending && b.status !== PaymentStatus.Pending) return -1;
         if (a.status !== PaymentStatus.Pending && b.status === PaymentStatus.Pending) return 1;
         return new Date(b.date).getTime() - new Date(a.date).getTime();
-    });
-    setPayments(sortedData);
-    setLoading(false);
-  }, []);
+    })
+  });
 
-  useEffect(() => {
-    fetchPayments();
-  }, [fetchPayments]);
-
-  const handleStatusUpdate = async (id: string, status: PaymentStatus) => {
-    const message = status === PaymentStatus.Approved 
-        ? 'Are you sure you want to approve this payment?' 
-        : 'Are you sure you want to reject this payment?';
-    
-    if (window.confirm(message)) {
-        await updatePaymentStatus(id, status);
-        fetchPayments();
+  const updateStatusMutation = useMutation({
+    mutationFn: updatePaymentStatus,
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['payments'] });
+        queryClient.invalidateQueries({ queryKey: ['users'] }); // Since approving might update user sub status
     }
+  });
+
+  const handleApprove = async (id: string) => {
+    if (window.confirm('Are you sure you want to approve this payment?')) {
+        updateStatusMutation.mutate({ id, status: PaymentStatus.Approved });
+        if (selectedPayment?.id === id) {
+            setSelectedPayment(null);
+        }
+    }
+  };
+
+  const handleRejectClick = (id: string) => {
+    setPaymentToRejectId(id);
+    setRejectionReason('');
+    setIsRejectModalOpen(true);
+  };
+
+  const handleConfirmReject = async () => {
+      if (paymentToRejectId) {
+          updateStatusMutation.mutate({ id: paymentToRejectId, status: PaymentStatus.Rejected, notes: rejectionReason });
+          setIsRejectModalOpen(false);
+          setPaymentToRejectId(null);
+          if (selectedPayment?.id === paymentToRejectId) {
+              setSelectedPayment(null);
+          }
+      }
   };
 
   const getStatusBadge = (status: PaymentStatus) => {
@@ -48,15 +73,18 @@ const PaymentsView: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
   }
+
+  const totalPages = Math.ceil(payments.length / itemsPerPage);
+  const paginatedPayments = payments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-800 mb-8">Payment Requests</h1>
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+      <div className="bg-white shadow-md rounded-lg flex flex-col">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -64,13 +92,12 @@ const PaymentsView: React.FC = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan & Amount</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Screenshot</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {payments.map((payment) => (
+              {paginatedPayments.map((payment) => (
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{payment.userName}</div>
@@ -85,41 +112,18 @@ const PaymentsView: React.FC = () => {
                     <div className="text-xs">{new Date(payment.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <button 
-                        onClick={() => setSelectedImage(payment.screenshotUrl)}
-                        className="flex items-center space-x-1 text-sm text-primary hover:text-indigo-800"
-                    >
-                        <EyeIcon />
-                        <span>View</span>
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(payment.status)}`}>
                       {payment.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    {payment.status === PaymentStatus.Pending && (
-                        <div className="flex items-center justify-end space-x-3">
-                            <button 
-                                onClick={() => handleStatusUpdate(payment.id, PaymentStatus.Approved)} 
-                                className="text-green-600 hover:text-green-900 flex items-center gap-1 bg-green-50 px-2 py-1 rounded border border-green-200"
-                                title="Approve"
-                            >
-                                <CheckIcon /> Approve
-                            </button>
-                            <button 
-                                onClick={() => handleStatusUpdate(payment.id, PaymentStatus.Rejected)} 
-                                className="text-red-600 hover:text-red-900 flex items-center gap-1 bg-red-50 px-2 py-1 rounded border border-red-200"
-                                title="Reject"
-                            >
-                                <XMarkIcon /> Reject
-                            </button>
-                        </div>
-                    )}
-                    {payment.status !== PaymentStatus.Pending && (
-                        <span className="text-gray-400 italic text-xs">Completed</span>
-                    )}
+                    <button 
+                        onClick={() => setSelectedPayment(payment)}
+                        className="text-primary hover:text-yellow-700 inline-flex items-center justify-center p-2 rounded-full hover:bg-yellow-50 transition-colors"
+                        title="View Details"
+                    >
+                        <EyeIcon />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -129,17 +133,109 @@ const PaymentsView: React.FC = () => {
               <div className="p-6 text-center text-gray-500">No payment requests found.</div>
           )}
         </div>
+        <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+        />
       </div>
       
-      {selectedImage && (
-        <Modal title="Payment Receipt" onClose={() => setSelectedImage(null)}>
-          <div className="flex justify-center">
-            <img src={selectedImage} alt="Payment Receipt" className="max-w-full max-h-[80vh] rounded shadow-lg" />
-          </div>
-          <div className="mt-4 flex justify-end">
-              <button onClick={() => setSelectedImage(null)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Close</button>
+      {selectedPayment && (
+        <Modal title="Payment Request Details" onClose={() => setSelectedPayment(null)}>
+          <div className="flex flex-col gap-4">
+             {/* Header Info */}
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+                <div>
+                    <h3 className="font-bold text-gray-900">{selectedPayment.userName}</h3>
+                    <p className="text-sm text-gray-500">{selectedPayment.userEmail}</p>
+                </div>
+                <div className="mt-2 sm:mt-0 text-left sm:text-right">
+                    <p className="text-lg font-bold text-primary">${selectedPayment.amount.toFixed(2)}</p>
+                    <p className="text-xs text-gray-600 uppercase font-semibold">{selectedPayment.planName}</p>
+                </div>
+             </div>
+
+             {/* Screenshot Area */}
+             <div className="relative bg-gray-100 rounded-lg border border-gray-200 p-2 flex items-center justify-center min-h-[300px]">
+                <img 
+                    src={selectedPayment.screenshotUrl} 
+                    alt="Payment Proof" 
+                    className="max-w-full max-h-[50vh] object-contain rounded shadow-sm" 
+                />
+             </div>
+             
+             {/* Metadata */}
+             <div className="flex justify-between items-center text-xs text-gray-500 px-1">
+                 <span>Submitted: {new Date(selectedPayment.date).toLocaleString()}</span>
+                 <span>ID: {selectedPayment.id}</span>
+             </div>
+
+             {selectedPayment.notes && (
+                <div className={`bg-yellow-50 border border-yellow-100 p-3 rounded text-sm ${selectedPayment.status === PaymentStatus.Rejected ? 'text-red-800 bg-red-50 border-red-100' : 'text-yellow-800'}`}>
+                    <span className="font-bold block mb-1">{selectedPayment.status === PaymentStatus.Rejected ? 'Rejection Reason / Notes:' : 'Notes:'}</span> 
+                    {selectedPayment.notes}
+                </div>
+             )}
+
+             {/* Action Footer */}
+             <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100 mt-2">
+                <button 
+                    onClick={() => setSelectedPayment(null)} 
+                    className="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-gray-200"
+                >
+                    Close
+                </button>
+                
+                {selectedPayment.status === PaymentStatus.Pending && (
+                    <>
+                         <button 
+                             onClick={() => handleRejectClick(selectedPayment.id)}
+                             className="w-full sm:w-auto px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                         >
+                             <XMarkIcon /> Reject
+                         </button>
+                         <button 
+                              onClick={() => handleApprove(selectedPayment.id)}
+                             className="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                         >
+                             <CheckIcon /> Approve Payment
+                         </button>
+                    </>
+                )}
+             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Rejection Modal */}
+      {isRejectModalOpen && (
+          <Modal title="Reject Payment" onClose={() => setIsRejectModalOpen(false)}>
+              <div className="space-y-4">
+                  <p className="text-gray-600 text-sm">Please provide a reason for rejecting this payment request. This note will be saved with the request.</p>
+                  <textarea
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+                      rows={4}
+                      placeholder="Enter rejection reason (e.g., Screenshot unclear, Payment not received...)"
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                  ></textarea>
+                  <div className="flex justify-end gap-3 pt-2">
+                      <button 
+                          onClick={() => setIsRejectModalOpen(false)}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      >
+                          Cancel
+                      </button>
+                      <button 
+                          onClick={handleConfirmReject}
+                          className="px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!rejectionReason.trim()}
+                      >
+                          Confirm Rejection
+                      </button>
+                  </div>
+              </div>
+          </Modal>
       )}
     </div>
   );

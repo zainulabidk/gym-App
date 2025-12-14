@@ -1,5 +1,5 @@
 {
-  "name": "gym-admin-dashboard",
+  "name": "q7-fitness-admin",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,7 +11,9 @@
   "dependencies": {
     "react-dom": "^19.2.0",
     "react": "^19.2.0",
-    "recharts": "^3.4.1"
+    "recharts": "^3.4.1",
+    "axios": "^1.6.0",
+    "@tanstack/react-query": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SubscriptionPlan } from '../types';
-import { getPlans, addPlan, updatePlan, deletePlan } from '../services/mockApi';
+import { getPlans, addPlan, updatePlan, deletePlan } from '../services/api';
 import Modal from './Modal';
+import Pagination from './Pagination';
 import { PlusIcon, EditIcon, DeleteIcon } from './Icons';
 
 const PlanForm: React.FC<{ plan: Partial<SubscriptionPlan> | null; onSave: (plan: any) => void; onCancel: () => void }> = ({ plan, onSave, onCancel }) => {
@@ -59,21 +61,39 @@ const PlanForm: React.FC<{ plan: Partial<SubscriptionPlan> | null; onSave: (plan
 
 
 const SubscriptionsView: React.FC = () => {
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
 
-  const fetchPlans = useCallback(async () => {
-    setLoading(true);
-    const plansData = await getPlans();
-    setPlans(plansData);
-    setLoading(false);
-  }, []);
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
-  useEffect(() => {
-    fetchPlans();
-  }, [fetchPlans]);
+  // React Query
+  const { data: plans = [], isLoading } = useQuery({ queryKey: ['plans'], queryFn: getPlans });
+
+  const addPlanMutation = useMutation({
+    mutationFn: addPlan,
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['plans'] });
+        handleCloseModal();
+    }
+  });
+
+  const updatePlanMutation = useMutation({
+    mutationFn: updatePlan,
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['plans'] });
+        handleCloseModal();
+    }
+  });
+
+  const deletePlanMutation = useMutation({
+    mutationFn: deletePlan,
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['plans'] });
+    }
+  });
 
   const handleOpenModal = (plan: SubscriptionPlan | null = null) => {
     setEditingPlan(plan);
@@ -87,37 +107,39 @@ const SubscriptionsView: React.FC = () => {
   
   const handleSavePlan = async (plan: SubscriptionPlan) => {
     if (editingPlan) {
-      await updatePlan({ ...editingPlan, ...plan });
+      updatePlanMutation.mutate({ ...editingPlan, ...plan });
     } else {
-      await addPlan(plan);
+      addPlanMutation.mutate(plan);
     }
-    fetchPlans();
-    handleCloseModal();
   };
 
   const handleDeletePlan = async (planId: string) => {
     if(window.confirm('Are you sure you want to delete this plan?')) {
-      await deletePlan(planId);
-      fetchPlans();
+      deletePlanMutation.mutate(planId);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
   }
+
+  const totalPages = Math.ceil(plans.length / itemsPerPage);
+  const paginatedPlans = plans.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Subscription Plans</h1>
-        <button onClick={() => handleOpenModal()} className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-indigo-700">
-          <PlusIcon />
-          Add Plan
-        </button>
+        {plans.length < 3 && (
+            <button onClick={() => handleOpenModal()} className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-indigo-700">
+            <PlusIcon />
+            Add Plan
+            </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {plans.map(plan => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        {paginatedPlans.map(plan => (
           <div key={plan.id} className="bg-white rounded-lg shadow-md p-6 flex flex-col">
             <h2 className="text-xl font-bold text-gray-800">{plan.name}</h2>
             <p className="mt-2 text-4xl font-extrabold text-gray-900">${plan.price}<span className="text-base font-medium text-gray-500">/{plan.duration === 'monthly' ? 'mo' : 'yr'}</span></p>
@@ -137,6 +159,14 @@ const SubscriptionsView: React.FC = () => {
             </div>
           </div>
         ))}
+      </div>
+      
+      <div className="bg-white rounded-lg shadow-sm">
+        <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+        />
       </div>
 
       {isModalOpen && (

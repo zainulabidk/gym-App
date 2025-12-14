@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { EmailIcon, LockIcon, EyeIcon, EyeSlashIcon } from './Icons';
 
@@ -7,7 +6,7 @@ interface LoginViewProps {
 }
 
 const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
-  const [email, setEmail] = useState('admin@gym.com');
+  const [email, setEmail] = useState('admin@q7fitness.com');
   const [password, setPassword] = useState('password');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -25,11 +24,14 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const inputBaseClasses = "block w-full px-4 py-3 text-gray-800 bg-neutral border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary placeholder-gray-500";
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-neutral p-4">
-      <div className="w-full max-w-sm p-8 space-y-6 bg-base-100 rounded-xl shadow-lg">
+    <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
+      <div className="w-full max-w-sm p-8 space-y-6 bg-white rounded-xl shadow-2xl">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-secondary tracking-wider">GYM ADMIN</h1>
-          <p className="mt-2 text-gray-500">Welcome back! Please sign in.</p>
+            <div className="flex justify-center items-center gap-1 mb-2">
+                <span className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-yellow-700">Q7</span>
+                <span className="text-2xl font-bold text-gray-900 tracking-widest mt-2">FITNESS</span>
+            </div>
+          <p className="mt-2 text-gray-500 text-sm">Administration Portal</p>
         </div>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
@@ -88,16 +90,16 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           <div>
             <button
               type="submit"
-              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-primary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-200"
+              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold tracking-wide rounded-lg text-white bg-gradient-to-r from-yellow-500 to-yellow-700 hover:from-yellow-600 hover:to-yellow-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-all duration-200 shadow-lg"
             >
-              Sign in
+              SIGN IN
             </button>
           </div>
         </form>
 
         <div className="text-center">
           <p className="text-xs text-gray-400">
-            For demo purposes, any email/password will work.
+            &copy; {new Date().getFullYear()} Q7 Fitness. All rights reserved.
           </p>
         </div>
       </div>

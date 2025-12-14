@@ -24,11 +24,24 @@ let users: User[] = [
   { id: '4', name: 'Emily Davis', email: 'emily.d@example.com', mobile: '456-789-0123', joinDate: '2023-04-05', subscriptionPlan: 'Free Trial', subscriptionStatus: SubscriptionStatus.Cancelled, avatarUrl: 'https://picsum.photos/seed/user4/200' },
 ];
 
+// Generate more users for pagination
+for (let i = 5; i <= 25; i++) {
+    users.push({
+        id: i.toString(),
+        name: `User ${i}`,
+        email: `user${i}@example.com`,
+        mobile: `555-010-${i.toString().padStart(4, '0')}`,
+        joinDate: new Date(Date.now() - Math.random() * 10000000000).toISOString().split('T')[0],
+        subscriptionPlan: i % 3 === 0 ? 'Premium' : (i % 2 === 0 ? 'Basic' : 'Free Trial'),
+        subscriptionStatus: i % 4 === 0 ? SubscriptionStatus.Inactive : SubscriptionStatus.Active,
+        avatarUrl: `https://picsum.photos/seed/user${i}/200`
+    });
+}
+
 let plans: SubscriptionPlan[] = [
   { id: '1', name: 'Free Trial', price: 0, duration: 'monthly', features: ['Access to basic workouts', 'Community access'] },
   { id: '2', name: 'Basic', price: 19.99, duration: 'monthly', features: ['All Free features', 'Access to all workouts', 'Personalized plans'] },
   { id: '3', name: 'Premium', price: 49.99, duration: 'monthly', features: ['All Basic features', '1-on-1 coaching', 'Live classes via Zoom'] },
-  { id: '4', name: 'Premium Yearly', price: 499.99, duration: 'yearly', features: ['All Premium features', '2 months free'] },
 ];
 
 let content: FitnessContent[] = [
@@ -38,11 +51,35 @@ let content: FitnessContent[] = [
   { id: '4', title: 'Advanced Abs', type: ContentType.Video, description: 'Challenge your core with these advanced exercises.', thumbnailUrl: 'https://picsum.photos/seed/content4/400/300', uploadDate: '2023-05-04' },
 ];
 
+// Generate more content
+for (let i = 5; i <= 20; i++) {
+    content.push({
+        id: i.toString(),
+        title: `Workout Session ${i}`,
+        type: i % 3 === 0 ? ContentType.Image : ContentType.Video,
+        description: `Description for content item ${i}. Great for beginners and pros alike.`,
+        thumbnailUrl: `https://picsum.photos/seed/content${i}/400/300`,
+        uploadDate: new Date(Date.now() - Math.random() * 5000000000).toISOString().split('T')[0]
+    });
+}
+
 let meetings: ZoomMeeting[] = [
   { id: '1', topic: 'HIIT Live Session', startTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), duration: 45, host: 'Coach Sarah', meetingUrl: '#' },
   { id: '2', topic: 'Advanced Yoga Workshop', startTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), duration: 90, host: 'Coach David', meetingUrl: '#' },
   { id: '3', topic: 'Nutrition Q&A', startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), duration: 60, host: 'Dr. Evans', meetingUrl: '#' },
 ];
+
+// Generate more meetings
+for(let i = 4; i <= 15; i++) {
+    meetings.push({
+        id: i.toString(),
+        topic: `Group Session ${i}`,
+        startTime: new Date(Date.now() + i * 24 * 60 * 60 * 1000).toISOString(),
+        duration: 60,
+        host: `Coach ${String.fromCharCode(65 + i)}`,
+        meetingUrl: '#'
+    });
+}
 
 let paymentRequests: PaymentRequest[] = [
     { 
@@ -84,6 +121,22 @@ let paymentRequests: PaymentRequest[] = [
         notes: 'Screenshot blurry, please re-upload'
     },
 ];
+
+// Generate more payments
+for(let i = 4; i <= 24; i++) {
+    paymentRequests.push({
+        id: `pay${i}`,
+        userId: `${i}`,
+        userName: `User ${i}`,
+        userEmail: `user${i}@example.com`,
+        amount: 29.99,
+        currency: 'USD',
+        screenshotUrl: `https://picsum.photos/seed/pay${i}/300/600`,
+        date: new Date(Date.now() - i * 5 * 60 * 60 * 1000).toISOString(),
+        status: i % 5 === 0 ? PaymentStatus.Pending : (i % 3 === 0 ? PaymentStatus.Rejected : PaymentStatus.Approved),
+        planName: 'Standard Plan'
+    });
+}
 
 const simulateDelay = <T,>(data: T): Promise<T> => new Promise(res => setTimeout(() => res(data), 500));
 

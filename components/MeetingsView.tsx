@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ZoomMeeting } from '../types';
-import { getMeetings, addMeeting, deleteMeeting } from '../services/mockApi';
+import { getMeetings, addMeeting, deleteMeeting } from '../services/api';
 import Modal from './Modal';
+import Pagination from './Pagination';
 import { PlusIcon, DeleteIcon } from './Icons';
 
 const MeetingForm: React.FC<{ onSave: (meeting: any) => void; onCancel: () => void }> = ({ onSave, onCancel }) => {
@@ -53,37 +55,50 @@ const MeetingForm: React.FC<{ onSave: (meeting: any) => void; onCancel: () => vo
 
 
 const MeetingsView: React.FC = () => {
-  const [meetings, setMeetings] = useState<ZoomMeeting[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const fetchMeetings = useCallback(async () => {
-    setLoading(true);
-    const meetingsData = await getMeetings();
-    setMeetings(meetingsData.sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()));
-    setLoading(false);
-  }, []);
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  useEffect(() => {
-    fetchMeetings();
-  }, [fetchMeetings]);
+  const { data: meetings = [], isLoading } = useQuery({ 
+      queryKey: ['meetings'], 
+      queryFn: getMeetings,
+      select: (data) => data.sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+  });
+
+  const addMeetingMutation = useMutation({
+    mutationFn: addMeeting,
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['meetings'] });
+        setIsModalOpen(false);
+    }
+  });
+
+  const deleteMeetingMutation = useMutation({
+    mutationFn: deleteMeeting,
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    }
+  });
 
   const handleSaveMeeting = async (meeting: Omit<ZoomMeeting, 'id'>) => {
-    await addMeeting(meeting);
-    fetchMeetings();
-    setIsModalOpen(false);
+    addMeetingMutation.mutate(meeting);
   };
   
   const handleDeleteMeeting = async (meetingId: string) => {
     if(window.confirm('Are you sure you want to cancel this meeting?')) {
-        await deleteMeeting(meetingId);
-        fetchMeetings();
+        deleteMeetingMutation.mutate(meetingId);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
   }
+
+  const totalPages = Math.ceil(meetings.length / itemsPerPage);
+  const paginatedMeetings = meetings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div>
@@ -95,9 +110,9 @@ const MeetingsView: React.FC = () => {
         </button>
       </div>
 
-      <div className="bg-white shadow-md rounded-lg">
+      <div className="bg-white shadow-md rounded-lg flex flex-col">
         <ul className="divide-y divide-gray-200">
-          {meetings.map((meeting) => (
+          {paginatedMeetings.map((meeting) => (
             <li key={meeting.id} className="p-4 sm:p-6 hover:bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1">
                 <div className="flex items-center">
@@ -123,6 +138,11 @@ const MeetingsView: React.FC = () => {
             </li>
           ))}
         </ul>
+        <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+        />
       </div>
 
       {isModalOpen && (
